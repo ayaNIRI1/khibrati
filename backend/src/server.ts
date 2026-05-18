@@ -17,12 +17,17 @@ const SECRET_KEY = 'khibrati_super_secret_key_for_jwt_auth';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'db.json');
 
 // Initialize Supabase Client
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
+const SUPABASE_KEY = (process.env.SUPABASE_KEY || '').trim();
 
-const supabase = (SUPABASE_URL && SUPABASE_KEY)
-  ? createClient(SUPABASE_URL, SUPABASE_KEY)
-  : null;
+let supabase: any = null;
+try {
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+} catch (err) {
+  console.error('⚠️ Error initializing Supabase client:', err);
+}
 
 if (supabase) {
   console.log('⚡ Connected to Supabase Database!');
