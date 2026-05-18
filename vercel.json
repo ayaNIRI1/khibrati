@@ -7,18 +7,18 @@
       "config": { "distDir": "dist" }
     },
     {
-      "src": "api/index.js",
+      "src": "api/index.ts",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index.js"
+      "dest": "api/index.ts"
     },
     {
       "src": "/uploads/(.*)",
-      "dest": "api/index.js"
+      "dest": "api/index.ts"
     },
     {
       "handle": "filesystem"
