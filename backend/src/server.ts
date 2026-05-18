@@ -304,7 +304,7 @@ app.post('/api/upload', upload.single('video'), (req: Request, res: Response): a
 const FRONTEND_DIST = path.join(__dirname, '..', '..', 'dist');
 if (fs.existsSync(FRONTEND_DIST)) {
   app.use(express.static(FRONTEND_DIST));
-  app.get('*', (req: Request, res: Response) => {
+  app.get('/*', (req: Request, res: Response) => {
     res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
   });
 }
