@@ -1,0 +1,11 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "name": "مدير النظام",
+      "email": "admin@khibrati.com",
+      "password": "$2b$10$eTyPJcfw2gN69Cmwpz3c.uuzoJAHGgrzMdNKbAYfupb1Bl1UohQ62", 
+      "role": "admin"
+    }
+  ]
+}
