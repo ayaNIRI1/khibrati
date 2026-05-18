@@ -29,10 +29,16 @@ export default function Login() {
         body: JSON.stringify(bodyData),
       });
 
-      const data = await response.json();
+      let data: any;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`خطأ في خادم فيرسيل (Vercel 500): ${text.substring(0, 100)}...`);
+      }
 
       if (!response.ok) {
-        // FastAPI returns errors in the "detail" field
         throw new Error(data.detail || data.message || 'حدث خطأ أثناء الاتصال بالخادم');
       }
 
