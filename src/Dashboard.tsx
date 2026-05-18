@@ -35,12 +35,26 @@ export default function Dashboard() {
 
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
 
-  const [courses, setCourses] = useState([
-    { id: 1, title: 'أساسيات المبيعات والتسويق', instructor: 'د. خالد عبدالله', duration: '12 ساعة', status: 'متاح', participants: 156, link: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ' },
-    { id: 2, title: 'إدارة المشاريع الرشيقة (Agile)', instructor: 'م. سارة أحمد', duration: '8 ساعات', status: 'قريباً', participants: 0, link: '' },
-    { id: 3, title: 'خدمة العملاء الاحترافية', instructor: 'أ. فاطمة سعيد', duration: '15 ساعة', status: 'متاح', participants: 340, link: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ' },
-    { id: 4, title: 'تحليل البيانات واتخاذ القرار', instructor: 'د. عمر محمد', duration: '20 ساعة', status: 'متاح', participants: 89, link: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ' },
-  ]);
+  const [courses, setCourses] = useState<any[]>(() => {
+    const saved = localStorage.getItem('khibrati_courses');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error parsing saved courses', e);
+      }
+    }
+    return [
+      { id: 1, title: 'أساسيات المبيعات والتسويق', instructor: 'د. خالد عبدالله', duration: '12 ساعة', status: 'متاح', participants: 156, link: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ' },
+      { id: 2, title: 'إدارة المشاريع الرشيقة (Agile)', instructor: 'م. سارة أحمد', duration: '8 ساعات', status: 'قريباً', participants: 0, link: '' },
+      { id: 3, title: 'خدمة العملاء الاحترافية', instructor: 'أ. فاطمة سعيد', duration: '15 ساعة', status: 'متاح', participants: 340, link: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ' },
+      { id: 4, title: 'تحليل البيانات واتخاذ القرار', instructor: 'د. عمر محمد', duration: '20 ساعة', status: 'متاح', participants: 89, link: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ' },
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('khibrati_courses', JSON.stringify(courses));
+  }, [courses]);
 
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [watchingCourse, setWatchingCourse] = useState<any>(null);
