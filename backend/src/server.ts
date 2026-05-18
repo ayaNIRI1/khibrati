@@ -57,13 +57,25 @@ const upload = multer({ storage });
 
 // Helper function to read DB
 const readDB = () => {
-  const data = fs.readFileSync(DB_PATH, 'utf-8');
-  return JSON.parse(data);
+  try {
+    if (!fs.existsSync(DB_PATH)) {
+      return { users: [] };
+    }
+    const data = fs.readFileSync(DB_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (err) {
+    console.warn("⚠️ Database read error, falling back to empty memory state:", err);
+    return { users: [] };
+  }
 };
 
 // Helper function to write DB
 const writeDB = (data: any) => {
-  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  try {
+    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn("⚠️ Database write error (likely read-only host), state saved in memory only:", err);
+  }
 };
 
 // Routes
