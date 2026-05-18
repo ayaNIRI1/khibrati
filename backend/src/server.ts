@@ -34,10 +34,16 @@ if (supabase) {
 app.use(cors());
 app.use(express.json());
 
-// Ensure uploads directory exists
-const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+// Ensure uploads directory exists (Self-healing for serverless hosts)
+const isVercelEnvironment = process.env.VERCEL === 'true' || process.env.NOW_REGION !== undefined || process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+const UPLOADS_DIR = process.env.UPLOADS_DIR || (isVercelEnvironment ? '/tmp' : path.join(__dirname, '..', 'uploads'));
+
+try {
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+} catch (err) {
+  console.warn("⚠️ Read-only filesystem detected. Uploads will write to temporary storage /tmp.");
 }
 
 // Serve uploads as static
@@ -298,8 +304,9 @@ if (fs.existsSync(FRONTEND_DIST)) {
   });
 }
 
-// Start Server
-if (!process.env.VERCEL) {
+// Start Server (Blocked in serverless envs to prevent execution hangs)
+const isServerlessPlatform = process.env.VERCEL || process.env.NOW_REGION || process.env.AWS_LAMBDA_FUNCTION_NAME;
+if (!isServerlessPlatform) {
   app.listen(PORT, () => {
     console.log(`🚀 Khibrati Backend running on http://localhost:${PORT}`);
     console.log('Using JSON file as database (No complex DB setup required!)');
