@@ -296,7 +296,9 @@ app.post('/api/upload', upload.single('video'), (req: Request, res: Response): a
   if (!req.file) {
     return res.status(400).json({ message: 'No file uploaded' });
   }
-  const fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+  const host = req.headers.host || 'localhost:5000';
+  const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+  const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
   res.json({ url: fileUrl });
 });
 

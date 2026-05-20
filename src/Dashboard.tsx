@@ -79,6 +79,15 @@ export default function Dashboard() {
     return url;
   };
 
+  const getCleanVideoUrl = (url: string) => {
+    if (!url) return '';
+    // If the URL is a local upload containing a localhost link, clean it to use API_BASE dynamically
+    if (url.includes('localhost:5000/uploads/')) {
+      return url.replace(/https?:\/\/localhost:5000/, API_BASE);
+    }
+    return url;
+  };
+
   const handleDeleteCourse = (id: number) => {
     if (window.confirm('هل أنت متأكد من حذف هذه الدورة؟')) {
       setCourses(courses.filter(c => c.id !== id));
@@ -481,7 +490,7 @@ export default function Dashboard() {
                   autoPlay 
                   style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
                 >
-                  <source src={watchingCourse.link} type="video/mp4" />
+                  <source src={getCleanVideoUrl(watchingCourse.link)} type="video/mp4" />
                   متصفحك لا يدعم تشغيل هذا الفيديو.
                 </video>
               )}
