@@ -111,11 +111,23 @@ export default function Dashboard() {
           method: 'POST',
           body: formData,
         });
+
+        if (!response.ok) {
+          if (response.status === 413) {
+            throw new Error('حجم ملف الفيديو كبير جداً. الحد الأقصى المسموح به للرفع على خادم Vercel هو 4.5 ميجابايت. يرجى رفع فيديو بحجم أصغر، أو استخدام رابط YouTube، أو تشغيل التطبيق محلياً لتجاوز هذا الحد.');
+          }
+          let errorText = '';
+          try {
+            errorText = await response.text();
+          } catch (_) {}
+          throw new Error(errorText || `رمز الخطأ: ${response.status}`);
+        }
+
         const data = await response.json();
         videoUrl = data.url;
-      } catch (error) {
+      } catch (error: any) {
         console.error('Upload failed:', error);
-        alert('فشل رفع الفيديو، يرجى المحاولة مرة أخرى.');
+        alert(error?.message ? `فشل رفع الفيديو:\n${error.message}` : 'فشل رفع الفيديو، يرجى المحاولة مرة أخرى.');
         setUploading(false);
         return;
       }
