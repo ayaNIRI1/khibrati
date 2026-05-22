@@ -291,11 +291,61 @@ app.get('/api/dashboard/recent-users', async (req: Request, res: Response) => {
   ]);
 });
 
+// Supabase Configuration Sharing Endpoint
+app.get('/api/config/supabase', (req: Request, res: Response): any => {
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    return res.json({
+      url: SUPABASE_URL,
+      key: SUPABASE_KEY
+    });
+  }
+  return res.status(404).json({ message: 'Supabase is not configured' });
+});
+
 // Upload Endpoint
-app.post('/api/upload', upload.single('video'), (req: Request, res: Response): any => {
+app.post('/api/upload', upload.single('video'), async (req: Request, res: Response): Promise<any> => {
   if (!req.file) {
     return res.status(400).json({ message: 'No file uploaded' });
   }
+
+  // If Supabase is active, upload to Supabase Storage Bucket 'khibrati-media'
+  if (supabase) {
+    try {
+      const fileBuffer = fs.readFileSync(req.file.path);
+      const fileName = `${Date.now()}-${req.file.originalname}`;
+      
+      const { data, error } = await supabase.storage
+        .from('khibrati-media')
+        .upload(fileName, fileBuffer, {
+          contentType: req.file.mimetype,
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      // Get Public URL
+      const { data: urlData } = supabase.storage
+        .from('khibrati-media')
+        .getPublicUrl(fileName);
+
+      // Delete the local file to save space on serverless environment (/tmp)
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        console.warn('⚠️ Could not delete temporary file from disk:', err);
+      }
+
+      return res.json({ url: urlData.publicUrl });
+    } catch (supabaseError) {
+      console.error('⚠️ Supabase Storage Upload failed, falling back to local storage:', supabaseError);
+      // Fallback to local storage link below if Supabase fails
+    }
+  }
+
+  // Fallback local file serving
   const host = req.headers.host || 'localhost:5000';
   const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
   const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;

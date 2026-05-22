@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE } from './apiConfig';
+import { createClient } from '@supabase/supabase-js';
 import './index.css';
 
 export default function Dashboard() {
@@ -103,33 +104,76 @@ export default function Dashboard() {
     // If a file is selected, upload it first
     if (selectedFile) {
       setUploading(true);
-      const formData = new FormData();
-      formData.append('video', selectedFile);
+      let uploadedSuccessfully = false;
 
+      // 1. Try Direct Upload to Supabase Storage first to bypass Vercel limits
       try {
-        const response = await fetch(`${API_BASE}/api/upload`, {
-          method: 'POST',
-          body: formData,
-        });
+        const configRes = await fetch(`${API_BASE}/api/config/supabase`);
+        if (configRes.ok) {
+          const supabaseConfig = await configRes.json();
+          if (supabaseConfig.url && supabaseConfig.key) {
+            console.log('⚡ Initializing Supabase client for direct browser upload...');
+            const supabase = createClient(supabaseConfig.url, supabaseConfig.key);
+            const fileName = `${Date.now()}-${selectedFile.name}`;
+            
+            const { error } = await supabase.storage
+              .from('khibrati-media')
+              .upload(fileName, selectedFile, {
+                cacheControl: '3600',
+                upsert: false
+              });
 
-        if (!response.ok) {
-          if (response.status === 413) {
-            throw new Error('حجم ملف الفيديو كبير جداً. الحد الأقصى المسموح به للرفع على خادم Vercel هو 4.5 ميجابايت. يرجى رفع فيديو بحجم أصغر، أو استخدام رابط YouTube، أو تشغيل التطبيق محلياً لتجاوز هذا الحد.');
+            if (error) {
+              throw error;
+            }
+
+            const { data: urlData } = supabase.storage
+              .from('khibrati-media')
+              .getPublicUrl(fileName);
+
+            if (urlData?.publicUrl) {
+              videoUrl = urlData.publicUrl;
+              uploadedSuccessfully = true;
+              console.log('⚡ Direct Supabase upload successful!', videoUrl);
+            }
           }
-          let errorText = '';
-          try {
-            errorText = await response.text();
-          } catch (_) {}
-          throw new Error(errorText || `رمز الخطأ: ${response.status}`);
         }
+      } catch (supabaseError: any) {
+        console.warn('⚠️ Direct Supabase upload failed or bypassed, falling back to server upload:', supabaseError);
+      }
 
-        const data = await response.json();
-        videoUrl = data.url;
-      } catch (error: any) {
-        console.error('Upload failed:', error);
-        alert(error?.message ? `فشل رفع الفيديو:\n${error.message}` : 'فشل رفع الفيديو، يرجى المحاولة مرة أخرى.');
-        setUploading(false);
-        return;
+      // 2. Fallback: Upload to local Express backend if direct upload didn't happen/succeed
+      if (!uploadedSuccessfully) {
+        try {
+          console.log('ℹ️ Attempting fallback upload via backend server...');
+          const formData = new FormData();
+          formData.append('video', selectedFile);
+
+          const response = await fetch(`${API_BASE}/api/upload`, {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            if (response.status === 413) {
+              throw new Error('حجم ملف الفيديو كبير جداً. الحد الأقصى المسموح به للرفع على خادم Vercel هو 4.5 ميجابايت. يرجى رفع فيديو بحجم أصغر، أو استخدام رابط YouTube، أو تشغيل التطبيق محلياً لتجاوز هذا الحد.');
+            }
+            let errorText = '';
+            try {
+              errorText = await response.text();
+            } catch (_) {}
+            throw new Error(errorText || `رمز الخطأ: ${response.status}`);
+          }
+
+          const data = await response.json();
+          videoUrl = data.url;
+          uploadedSuccessfully = true;
+        } catch (error: any) {
+          console.error('Fallback upload failed:', error);
+          alert(error?.message ? `فشل رفع الفيديو:\n${error.message}` : 'فشل رفع الفيديو، يرجى المحاولة مرة أخرى.');
+          setUploading(false);
+          return;
+        }
       }
     }
 
