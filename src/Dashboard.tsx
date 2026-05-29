@@ -53,9 +53,44 @@ export default function Dashboard() {
     ];
   });
 
+  const [supabaseClient, setSupabaseClient] = useState<any>(null);
+
+  const loadCourses = async (client: any) => {
+    if (client) {
+      try {
+        console.log('⚡ Fetching courses from Supabase...');
+        const { data: dbCourses, error } = await client
+          .from('courses')
+          .select('*')
+          .order('created_at', { ascending: true });
+
+        if (!error && dbCourses) {
+          localStorage.setItem('khibrati_courses', JSON.stringify(dbCourses));
+          setCourses(dbCourses);
+          return;
+        }
+        if (error) throw error;
+      } catch (err) {
+        console.error('⚠️ Failed to load courses from Supabase, using localStorage:', err);
+      }
+    }
+    
+    // Fallback
+    const saved = localStorage.getItem('khibrati_courses');
+    if (saved) {
+      try {
+        setCourses(JSON.parse(saved));
+      } catch (e) {
+        console.error('Error parsing saved courses', e);
+      }
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem('khibrati_courses', JSON.stringify(courses));
-  }, [courses]);
+    if (!supabaseClient) {
+      localStorage.setItem('khibrati_courses', JSON.stringify(courses));
+    }
+  }, [courses, supabaseClient]);
 
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [watchingCourse, setWatchingCourse] = useState<any>(null);
@@ -89,9 +124,22 @@ export default function Dashboard() {
     return url;
   };
 
-  const handleDeleteCourse = (id: number) => {
+  const handleDeleteCourse = async (id: any) => {
     if (window.confirm('هل أنت متأكد من حذف هذه الدورة؟')) {
-      setCourses(courses.filter(c => c.id !== id));
+      if (supabaseClient) {
+        try {
+          console.log('⚡ Deleting course from Supabase:', id);
+          const { error } = await supabaseClient
+            .from('courses')
+            .delete()
+            .eq('id', id.toString());
+
+          if (error) throw error;
+        } catch (err) {
+          console.error('⚠️ Failed to delete course from Supabase:', err);
+        }
+      }
+      setCourses(courses.filter(c => c.id.toString() !== id.toString()));
     }
   };
 
@@ -178,7 +226,7 @@ export default function Dashboard() {
     }
 
     const courseToAdd = {
-      id: Date.now(),
+      id: Date.now().toString(),
       title: newCourse.title,
       instructor: newCourse.instructor,
       duration: newCourse.duration,
@@ -186,6 +234,20 @@ export default function Dashboard() {
       link: videoUrl,
       participants: 0
     };
+    
+    if (supabaseClient) {
+      try {
+        console.log('⚡ Saving course to Supabase...');
+        const { error } = await supabaseClient
+          .from('courses')
+          .insert([courseToAdd]);
+
+        if (error) throw error;
+        console.log('⚡ Course saved to Supabase successfully!');
+      } catch (err) {
+        console.error('⚠️ Failed to save course to Supabase, falling back to local state:', err);
+      }
+    }
     
     setCourses([...courses, courseToAdd]);
     setIsAddingCourse(false);
@@ -208,6 +270,25 @@ export default function Dashboard() {
       setUser(JSON.parse(userData));
     }
 
+    const initSupabaseAndCourses = async () => {
+      let client: any = null;
+      try {
+        const configRes = await fetch(`${API_BASE}/api/config/supabase`);
+        if (configRes.ok) {
+          const supabaseConfig = await configRes.json();
+          if (supabaseConfig.url && supabaseConfig.key) {
+            console.log('⚡ Initializing Supabase Client globally...');
+            client = createClient(supabaseConfig.url, supabaseConfig.key);
+            setSupabaseClient(client);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ Could not initialize global Supabase client:', err);
+      }
+      
+      await loadCourses(client);
+    };
+
     // جلب البيانات من واجهة بايثون (API)
     const fetchDashboardData = async () => {
       try {
@@ -228,6 +309,7 @@ export default function Dashboard() {
       }
     };
     
+    initSupabaseAndCourses();
     fetchDashboardData();
   }, [navigate]);
 
